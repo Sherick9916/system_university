@@ -1,0 +1,234 @@
+const readlineSync = require(`readline-sync`);
+
+let M = 0;
+
+class ProfesorBase {
+    constructor(nombre, asignaturas, tieneMaestria) {
+        this._nombre = nombre;
+        this._asignaturas = asignaturas;
+        this._tieneMaestria = tieneMaestria;
+    }
+
+    calcularHoras() {
+        return this._asignaturas.reduce((total, asignatura) => total + asignatura.horas, 0);
+    }
+
+    calcularPago() {
+        return this.calcularHoras() * this.tarifaHora;
+    }
+
+    get nombre() {
+        return this._nombre;
+    }
+
+    set nombre(nuevoNombre) {
+        this._nombre = nuevoNombre;
+    }
+
+    get asignaturas() {
+        return this._asignaturas;
+    }
+
+    set asignaturas(nuevasAsignaturas) {
+        this._asignaturas = nuevasAsignaturas;
+    }
+
+    get tieneMaestria() {
+        return this._tieneMaestria;
+    }
+}
+
+class ProfesorPlanta extends ProfesorBase {
+    constructor(nombre, asignaturas, tieneMaestria) {
+        super(nombre, asignaturas, tieneMaestria);
+        this.tarifaHora = 10; // Tarifa base de $10/hora para profesor de planta
+    }
+}
+
+class ProfesorCatedratico extends ProfesorBase {
+    constructor(nombre, asignaturas, tieneMaestria) {
+        super(nombre, asignaturas, tieneMaestria);
+        this.tarifaHora = 12; // Tarifa base de $12/hora para profesor catedrático
+    }
+}
+
+class ProfesorCatedraticoAsociado extends ProfesorBase {
+    constructor(nombre, asignaturas, tieneMaestria) {
+        super(nombre, asignaturas, tieneMaestria);
+        this.tarifaHora = 12 * 1.07; // Tarifa base de $12/hora + 7% para profesor catedrático asociado
+    }
+}
+
+class Asignatura {
+    constructor(nombre, horas) {
+        this._nombre = nombre;
+        this._horas = horas;
+    }
+
+    get nombre() {
+        return this._nombre;
+    }
+
+    set nombre(nuevoNombre) {
+        this._nombre = nuevoNombre;
+    }
+
+    get horas() {
+        return this._horas;
+    }
+
+    set horas(nuevasHoras) {
+        this._horas = nuevasHoras;
+    }
+}
+
+class Programa {
+    constructor(nombre, esDiurno) {
+        this._nombre = nombre;
+        this._esDiurno = esDiurno;
+        this._profesores = [];
+    }
+
+    agregarProfesor(profesor) {
+        this._profesores.push(profesor);
+    }
+
+    calcularRecargo() {
+        return this._esDiurno ? M : M + 5; // Si es diurno, usar M%, si no, usar M + 5%
+    }
+
+    get nombre() {
+        return this._nombre;
+    }
+
+    set nombre(nuevoNombre) {
+        this._nombre = nuevoNombre;
+    }
+
+    get profesores() {
+        return this._profesores;
+    }
+
+    get esDiurno() {
+        return this._esDiurno;
+    }
+}
+
+let numProgramas = +readlineSync.question(`¿Cuántos programas desea ingresar? `);
+let programas = [];
+for (let i = 0; i < numProgramas; i++) {
+    let nombrePrograma = readlineSync.question(`Ingrese el nombre del programa ${i + 1}: `);
+    let esDiurno = readlineSync.keyInYNStrict(`El programa ${nombrePrograma} es diurno?`);
+    M = +readlineSync.question(`Ingrese el valor base del recargo para programas diurnos o nocturno: `);   
+    programa = new Programa(nombrePrograma, esDiurno);  
+
+    let nombreProfesor = readlineSync.question(`¿Ingrese el nombre del profesor del programa ${nombrePrograma}? `);
+    let asignaturasProfesor = [];
+    let horasTotales = 0;
+    while (horasTotales === 0) {
+        let nombreAsignatura = readlineSync.question(`¿Ingrese el nombre de la asignatura que dicta el profesor ${nombreProfesor}? `);
+        let horasAsignatura = +readlineSync.question(`¿Ingrese las horas de la asignatura ${nombreAsignatura} que dicta el profesor ${nombreProfesor}? `);
+        asignaturasProfesor.push(new Asignatura(nombreAsignatura, horasAsignatura));
+        horasTotales = asignaturasProfesor.reduce((total, asignatura) => total + asignatura.horas, 0);
+    }
+
+    let tipoProfesorIndex = readlineSync.keyInSelect(["Planta", "Catedrático", "Catedrático Asociado"],`Ingrese el tipo de profesor ${nombreProfesor}: `);
+    let tieneMaestria = readlineSync.keyInYNStrict(`El profesor ${nombreProfesor} tiene maestría?`);
+    let profesor;
+    switch (tipoProfesorIndex) {
+        case 0:
+            profesor = new ProfesorPlanta(nombreProfesor, asignaturasProfesor, tieneMaestria);
+            break;
+        case 1:
+            profesor = new ProfesorCatedratico(nombreProfesor, asignaturasProfesor, tieneMaestria);
+            break;
+        case 2:
+            profesor = new ProfesorCatedraticoAsociado(nombreProfesor, asignaturasProfesor, tieneMaestria);
+            break;
+    }
+
+    programa.agregarProfesor(profesor);
+    programas.push(programa);
+}
+
+// Funcionalidades adicionales
+
+// 1. Costo total de la nómina de toda la universidad
+let costoTotalNomina = programas.reduce((total, programa) => {
+    return total + programa.profesores.reduce((totalProfesores, profesor) => {
+        return totalProfesores + profesor.calcularPago();
+    }, 0);
+}, 0);
+console.log(`Costo total de la nómina de toda la universidad: $${costoTotalNomina}`);
+
+// 2. Costo total de la nómina de un programa dado
+let nombreProgramaConsulta = "Comunicacion y Periodismo"; // Nombre del programa a consultar
+let programaConsulta = programas.find(programa => programa.nombre === nombreProgramaConsulta);
+if (programaConsulta) {
+    let costoNominaPrograma = programaConsulta.profesores.reduce((total, profesor) => {
+        return total + profesor.calcularPago();
+    }, 0);
+    console.log(`Costo total de la nómina del programa ${nombreProgramaConsulta}: $${costoNominaPrograma}`);
+} else {
+    console.log(`No se encontró el programa ${nombreProgramaConsulta}`);
+}
+
+// 3. Promedio de costo de los profesores que dan clases en el día
+let profesoresDia = programas.reduce((totalProfesores, programa) => {
+    if (!programa.esDiurno) return totalProfesores;
+    return totalProfesores.concat(programa.profesores);
+}, []);
+let promedioCostoDia = profesoresDia.reduce((total, profesor) => {
+    return total + profesor.calcularPago();
+}, 0) / profesoresDia.length;
+console.log(`Promedio de costo de los profesores que dan clases en el día: $${promedioCostoDia.toFixed(2)}`);
+
+// 4. Costo total y horas extras de un profesor dado
+let nombreProfesorConsulta = "Nombre del profesor"; // Nombre del profesor a consultar
+let profesorConsulta = programas.reduce((profesorEncontrado, programa) => {
+    if (profesorEncontrado) return profesorEncontrado;
+    return programa.profesores.find(profesor => profesor.nombre === nombreProfesorConsulta);
+}, null);
+if (profesorConsulta) {
+    let horasExtrasDiurnas = profesorConsulta.asignaturas.reduce((total, asignatura) => {
+        if (asignatura.horas > 8) {
+            return total + (asignatura.horas - 8);
+        }
+        return total;
+    }, 0);
+    let horasExtrasNocturnas = profesorConsulta.asignaturas.reduce((total, asignatura) => {
+        if (asignatura.horas > 6 && !programa.esDiurno) {
+            return total + (asignatura.horas - 6);
+        }
+        return total;
+    }, 0);
+    let costoTotalProfesor = profesorConsulta.calcularPago();
+    let costoHorasExtras = (horasExtrasDiurnas * profesorConsulta.tarifaHora * 1.25) + (horasExtrasNocturnas * profesorConsulta.tarifaHora * 1.5);
+    console.log(`Costo total a pagar al profesor ${nombreProfesorConsulta}: $${costoTotalProfesor}`);
+    console.log(`Costo por horas extras diurnas: $${(horasExtrasDiurnas * profesorConsulta.tarifaHora * 1.25).toFixed(2)}`);
+    console.log(`Costo por horas extras nocturnas: $${(horasExtrasNocturnas * profesorConsulta.tarifaHora * 1.5).toFixed(2)}`);
+} else {
+    console.log(`No se encontró el profesor ${nombreProfesorConsulta}`);
+}
+
+// 5. Costo total de los profesores de planta
+let costoProfesoresPlanta = programas.reduce((total, programa) => {
+    return total + programa.profesores.filter(profesor => profesor instanceof ProfesorPlanta).reduce((totalPlanta, profesorPlanta) => {
+        return totalPlanta + profesorPlanta.calcularPago();
+    }, 0);
+}, 0);
+console.log(`Costo total de los profesores de planta: $${costoProfesoresPlanta}`);
+
+// 6. Costo total de los profesores catedráticos
+let costoProfesoresCatedraticos = programas.reduce((total, programa) => {
+    return total + programa.profesores.filter(profesor => profesor instanceof ProfesorCatedratico).reduce((totalCatedraticos, profesorCatedratico) => {
+        return totalCatedraticos + profesorCatedratico.calcularPago();
+    }, 0);
+}, 0);
+console.log(`Costo total de los profesores catedráticos: $${costoProfesoresCatedraticos}`);
+
+// 7. Cantidad de profesores que tienen maestría
+let cantidadProfesoresMaestria = programas.reduce((total, programa) => {
+    return total + programa.profesores.filter(profesor => profesor.tieneMaestria).length;
+}, 0);
+console.log(`Cantidad de profesores que tienen maestría: ${cantidadProfesoresMaestria}`);
